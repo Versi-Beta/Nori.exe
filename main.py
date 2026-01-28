@@ -1,9 +1,13 @@
+import os
+import asyncio
 import discord
 from discord.ext import commands
 from discord import app_commands
 from datetime import timedelta, datetime
 from collections import defaultdict
-import os
+from fastapi import FastAPI
+from threading import Thread
+import uvicorn
 
 # ─── CONFIG ────────────────────────────────────────────────
 DISCORD_TOKEN = os.environ['discordkey']
@@ -29,6 +33,8 @@ AUTOMOD_SPAM_INTERVAL = 5
 AUTOMOD_SPAM_TIMEOUT = timedelta(hours=1)
 AUTOMOD_WORD_TIMEOUT = timedelta(hours=1)
 AUTOMOD_EXCEPT_USER = 1277708926863020122
+
+PORT = int(os.environ.get("PORT", 10000))  # required for Render
 
 # ─── INTENTS ───────────────────────────────────────────────
 intents = discord.Intents.default()
@@ -270,8 +276,20 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
+# ─── FASTAPI PING SERVER FOR RENDER ───────────────────────
+app = FastAPI()
+
+@app.get("/")
+async def ping():
+    return {"status": "Bot is running!"}
+
+def run_webserver():
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
+
 # ─── START BOT ────────────────────────────────────────────
-bot.run(DISCORD_TOKEN)
+async def main():
+    Thread(target=run_webserver, daemon=True).start()  # start webserver in background
+    async with bot:
+        await bot.start(DISCORD_TOKEN)
 
-
-
+asyncio.run(main())

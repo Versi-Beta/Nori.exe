@@ -60,7 +60,10 @@ def mod_only():
 @bot.event
 async def on_ready():
     guild = discord.Object(id=GUILD_ID)
-    await bot.tree.sync(guild=guild)
+    try:
+    await bot.tree.sync()
+except Exception as e:
+    print("Command sync failed:", e)
     print(f"{bot.user} is online and commands synced!")
 
 # ─── /W COMMAND ──────────────────────────────────────────
@@ -354,6 +357,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

@@ -111,12 +111,6 @@ async def remind(interaction: discord.Interaction, role: discord.Role):
         color=discord.Color.from_str("#C8A2C8")
     )
 
-    await interaction.channel.send(
-        content=role.mention,
-        embed=embed,
-        allowed_mentions=discord.AllowedMentions(roles=True)
-    )
-
     await interaction.channel.send(embed=embed)
     await interaction.response.send_message(
         f"✅ Reminder sent to {role.mention}.",
@@ -449,6 +443,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

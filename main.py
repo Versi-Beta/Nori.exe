@@ -87,16 +87,16 @@ async def w(interaction: discord.Interaction):
 
 @bot.tree.command(
     name="remind",
-    description="Send a verification reminder",
+    description="Send a verification reminder to a role",
     guild=discord.Object(id=GUILD_ID)
 )
 @mod_only()
-@app_commands.describe(member="User to remind")
-async def remind(interaction: discord.Interaction, member: discord.Member):
+@app_commands.describe(role="Role to remind")
+async def remind(interaction: discord.Interaction, role: discord.Role):
     embed = discord.Embed(
         title="🌸 Verification Reminder 🌸",
         description=(
-            f"**Hi <@1277708926863020122>** ! 🤍\n\n"
+            f"**Hi {role.mention}** ! 🤍\n\n"
             "Just a little reminder to complete your verification so you can "
             "**unlock the full server and all our channels** ✨\n\n"
             "You can open a verification ticket in <#1278454522922139749> "
@@ -104,8 +104,8 @@ async def remind(interaction: discord.Interaction, member: discord.Member):
             "Or continue the process through your existing ticket if you’ve already started! 💌\n\n"
             "This step helps us keep the server safe and girl-only, and we really appreciate your patience "
             "and cooperation 🤍\n\n"
-            "If you have any questions or need help at any point, don’t hesitate to ask: "
-            "we’re happy to help!\n"
+            "If you have any questions or need help at any point, don’t hesitate to ask — "
+            "we’re happy to help 🫶✨\n"
             "We can’t wait to welcome you fully into the server 🌷"
         ),
         color=discord.Color.from_str("#C8A2C8")
@@ -113,7 +113,7 @@ async def remind(interaction: discord.Interaction, member: discord.Member):
 
     await interaction.channel.send(embed=embed)
     await interaction.response.send_message(
-        f"✅ Reminder sent to {member.mention}.",
+        f"✅ Reminder sent to {role.mention}.",
         ephemeral=True
     )
 
@@ -443,6 +443,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

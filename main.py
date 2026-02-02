@@ -104,7 +104,7 @@ async def remind(interaction: discord.Interaction, role: discord.Role):
             "Or continue the process through your existing ticket if you’ve already started! 💌\n\n"
             "This step helps us keep the server safe and girl-only, and we really appreciate your patience "
             "and cooperation 🤍\n\n"
-            "If you have any questions or need help at any point, don’t hesitate to ask — "
+            "If you have any questions or need help at any point, don’t hesitate to ask: "
             "we’re happy to help 🫶✨\n"
             "We can’t wait to welcome you fully into the server 🌷"
         ),
@@ -443,6 +443,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

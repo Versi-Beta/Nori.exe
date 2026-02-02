@@ -272,6 +272,125 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
+# ─── /BAN COMMAND ───────────────────────────────────────
+@bot.tree.command(
+    name="ban",
+    description="Ban a user",
+    guild=discord.Object(id=GUILD_ID)
+)
+@mod_only()
+@app_commands.describe(member="User to ban", reason="Reason for ban")
+async def ban(interaction: discord.Interaction, member: discord.Member, reason: str):
+    dm_embed = discord.Embed(
+        title="🚫 You have been banned from **{interaction.guild.name}**",
+        description=(
+            f"Sorry {member.mention}.You have been **banned** from **{interaction.guild.name}**.\n\n"
+            f"**Reason:** {reason}\n\n"
+            f"If you think this is a mistake, you may appeal here:\n{APPEAL_LINK}"
+        ),
+        color=discord.Color.red()
+    )
+
+    try:
+        await member.send(embed=dm_embed)
+    except discord.Forbidden:
+        pass
+
+    await member.ban(reason=reason)
+
+    log = bot.get_channel(LOG_CHANNEL_ID)
+    if log:
+        log_embed = discord.Embed(
+            title="🔨 Ban",
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow()
+        )
+        log_embed.add_field(name="👤 User", value=f"{member} ({member.id})", inline=False)
+        log_embed.add_field(name="📌 Reason", value=reason, inline=False)
+        log_embed.add_field(name="🛡️ Moderator", value=interaction.user.mention, inline=False)
+        await log.send(embed=log_embed)
+
+    await interaction.response.send_message(
+        f"✅ {member.mention} has been banned.",
+        ephemeral=True
+    )
+
+
+# ─── /UNBAN COMMAND ─────────────────────────────────────
+@bot.tree.command(
+    name="unban",
+    description="Unban a user",
+    guild=discord.Object(id=GUILD_ID)
+)
+@mod_only()
+@app_commands.describe(user_id="ID of the user to unban", reason="Reason for unban")
+async def unban(interaction: discord.Interaction, user_id: str, reason: str):
+    guild = interaction.guild
+    user = await bot.fetch_user(int(user_id))
+
+    await guild.unban(user, reason=reason)
+
+    log = bot.get_channel(LOG_CHANNEL_ID)
+    if log:
+        embed = discord.Embed(
+            title="♻️ Unban",
+            color=discord.Color.green(),
+            timestamp=datetime.utcnow()
+        )
+        embed.add_field(name="👤 User", value=f"{user} ({user.id})", inline=False)
+        embed.add_field(name="📌 Reason", value=reason, inline=False)
+        embed.add_field(name="🛡️ Moderator", value=interaction.user.mention, inline=False)
+        await log.send(embed=embed)
+
+    await interaction.response.send_message(
+        f"✅ {user} has been unbanned.",
+        ephemeral=True
+    )
+
+
+# ─── /KICK COMMAND ──────────────────────────────────────
+@bot.tree.command(
+    name="kick",
+    description="Kick a user",
+    guild=discord.Object(id=GUILD_ID)
+)
+@mod_only()
+@app_commands.describe(member="User to kick", reason="Reason for kick")
+async def kick(interaction: discord.Interaction, member: discord.Member, reason: str):
+    dm_embed = discord.Embed(
+        title="👢 You have been kicked from **{interaction.guild.name}**",
+        description=(
+            f"Sorry {member.mention}. You have been **kicked** from **{interaction.guild.name}**.\n\n"
+            f"**Reason:** {reason}\n\n"
+            f"If you think this is unfair, you may appeal here:\n{APPEAL_LINK}"
+        ),
+        color=discord.Color.red()
+    )
+
+    try:
+        await member.send(embed=dm_embed)
+    except discord.Forbidden:
+        pass
+
+    await member.kick(reason=reason)
+
+    log = bot.get_channel(LOG_CHANNEL_ID)
+    if log:
+        log_embed = discord.Embed(
+            title="👢 Kick",
+            color=discord.Color.red(),
+            timestamp=datetime.utcnow()
+        )
+        log_embed.add_field(name="👤 User", value=f"{member} ({member.id})", inline=False)
+        log_embed.add_field(name="📌 Reason", value=reason, inline=False)
+        log_embed.add_field(name="🛡️ Moderator", value=interaction.user.mention, inline=False)
+        await log.send(embed=log_embed)
+
+    await interaction.response.send_message(
+        f"✅ {member.mention} has been kicked.",
+        ephemeral=True
+    )
+
 # ─── FLASK SERVER TO KEEP BOT ALIVE ─────────────────────
 app = Flask('')
 
@@ -290,6 +409,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

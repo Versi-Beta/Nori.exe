@@ -24,13 +24,23 @@ AUTOMOD_FORBIDDEN_WORDS = [
     "fucking","slut","whore","dildo","blowjob","anal","vagina","penis","masturbate","cumshot","orgasm",
     "snapchat","instagram","discord.gg","discordapp","phone number","address","location","email",
     "🍑","🍆","💦","👅","🍒","stupid","loser","idiot","bitch","whore","slut","kill yourself","kys",
-    "die","cunt"
+    "die","cunt", "girls"
 ]
 AUTOMOD_SPAM_LIMIT = 5
 AUTOMOD_SPAM_INTERVAL = 5
 AUTOMOD_SPAM_TIMEOUT = timedelta(hours=1)
 AUTOMOD_WORD_TIMEOUT = timedelta(hours=1)
 AUTOMOD_EXCEPT_USER = 1277708926863020122
+
+PROMO_CHANNEL_ID = 1469014593085902890
+
+LEVEL_ROLES = {
+    5: 1469012447808454919,
+    10: 1469012503714463807,
+    20: 1469012567979462803,
+    35: 1469013415090716774,
+    50: 1469013481968894033
+}
 
 # ─── INTENTS ───────────────────────────────────────────────
 intents = discord.Intents.default()
@@ -425,6 +435,113 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
         ephemeral=True
     )
 
+# ─────────────────────────────────────────────────────────
+# LEVEL + PROMO SYSTEM (ADD-ON)
+# ─────────────────────────────────────────────────────────
+
+XP_PER_MESSAGE = (10, 20)     # medium-hard
+XP_COOLDOWN = 60              # seconds
+
+user_xp = defaultdict(int)
+user_level = defaultdict(int)
+last_xp_time = defaultdict(int)
+
+promo_usage = defaultdict(lambda: {
+    "date": date.today(),
+    "messages": 0,
+    "links": 0
+})
+
+async def level_up(member: discord.Member, level: int):
+    embed = discord.Embed(
+        title="✨ LEVEL UP! ✨",
+        description=f"Congrats {member.mention}! 🥳💫\nYou just leveled up to **Level {level}**! 💖",
+        color=discord.Color.from_str("#67bed9")
+    )
+    try:
+        await member.send(embed=embed)
+    except discord.Forbidden:
+        pass
+
+async def update_level_roles(member: discord.Member, new_level: int):
+    for lvl, role_id in LEVEL_ROLES.items():
+        role = member.guild.get_role(role_id)
+        if role and role in member.roles and lvl > new_level:
+            await member.remove_roles(role)
+
+    if new_level in LEVEL_ROLES:
+        role = member.guild.get_role(LEVEL_ROLES[new_level])
+        if role:
+            await member.add_roles(role)
+
+def get_promo_limits(level: int):
+    if level >= 50:
+        return None
+    if level >= 35:
+        return {"messages": None, "links": 2}
+    if level >= 20:
+        return {"messages": None, "links": 1}
+    if level >= 10:
+        return {"messages": 1, "links": 0}
+    return {"messages": 0, "links": 0}
+
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+
+    now = datetime.utcnow().timestamp()
+    user_id = message.author.id
+
+    # ── XP SYSTEM ──
+    if now - last_xp_time[user_id] >= XP_COOLDOWN:
+        gained = random.randint(*XP_PER_MESSAGE)
+        user_xp[user_id] += gained
+        last_xp_time[user_id] = now
+
+        required = 100 + (user_level[user_id] ** 2 * 20)
+
+        if user_xp[user_id] >= required:
+            user_xp[user_id] = 0
+            user_level[user_id] += 1
+
+            await update_level_roles(message.author, user_level[user_id])
+
+            if user_level[user_id] >= 10:
+                await level_up(message.author, user_level[user_id])
+
+    # ── PROMO RESTRICTIONS ──
+    if message.channel.id == PROMO_CHANNEL_ID:
+        level = user_level[message.author.id]
+        limits = get_promo_limits(level)
+        usage = promo_usage[message.author.id]
+
+        if usage["date"] != date.today():
+            usage["date"] = date.today()
+            usage["messages"] = 0
+            usage["links"] = 0
+
+        has_link = "http://" in message.content or "https://" in message.content
+
+        if limits:
+            if limits["messages"] == 0:
+                await message.delete()
+                return
+
+            if limits["messages"] is not None:
+                usage["messages"] += 1
+                if usage["messages"] > limits["messages"]:
+                    await message.delete()
+                    return
+
+            if has_link:
+                usage["links"] += 1
+                if limits["links"] is not None and usage["links"] > limits["links"]:
+                    await message.delete()
+                    return
+
+    await bot.process_commands(message)
+
 # ─── FLASK SERVER TO KEEP BOT ALIVE ─────────────────────
 app = Flask('')
 
@@ -443,6 +560,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

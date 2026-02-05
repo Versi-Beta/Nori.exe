@@ -393,16 +393,21 @@ async def on_message(message: discord.Message):
         return
 
 if message.channel.id == AUTOMOD_FORBIDDEN_CHANNEL_ID:
-    lowered = message.content.lower()
-    
-     for word in AUTOMOD_FORBIDDEN_WORDS:
-        if word in lowered:
-            await message.delete()
-            await message.author.timeout(
-                AUTOMOD_WORD_TIMEOUT,
-                reason=f"Forbidden word: {word}"
-            )
-            return
+        lowered = message.content.lower()
+
+        for word in AUTOMOD_FORBIDDEN_WORDS:
+            if word in lowered:
+                try:
+                    await message.delete()
+                except discord.Forbidden:
+                    pass
+                try:
+                    await message.author.timeout(
+                        AUTOMOD_WORD_TIMEOUT,
+                        reason=f"Forbidden word: {word}"
+                    )
+                except discord.Forbidden:
+                    pass
                 
             log = bot.get_channel(AUTOMOD_LOG_CHANNEL_ID)
             if log:
@@ -557,6 +562,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

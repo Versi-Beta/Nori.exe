@@ -16,7 +16,6 @@ LOG_CHANNEL_ID = 1457165025931432019
 RULES_CHANNEL_ID = 1276492961055637534
 MOD_CONTACT_CHANNEL_ID = 1445162538886238419
 APPEAL_LINK = "https://appeal.gg/WV3NaANC"
-AUTOMOD_FORBIDDEN_CHANNEL_ID = 1465090478797230120
 
 MOD_ROLE_IDS = [1445154830971572254, 1278403720299937853, 1462218720226054295]
 
@@ -32,6 +31,7 @@ AUTOMOD_FORBIDDEN_WORDS = [
 AUTOMOD_SPAM_LIMIT = 5
 AUTOMOD_SPAM_INTERVAL = 5
 AUTOMOD_SPAM_TIMEOUT = timedelta(hours=1)
+AUTOMOD_FORBIDDEN_CHANNEL_ID = 1465090478797230120
 AUTOMOD_WORD_TIMEOUT = timedelta(hours=1)
 AUTOMOD_EXCEPT_USER = 1277708926863020122
 
@@ -393,12 +393,13 @@ async def on_message(message: discord.Message):
 
 if message.channel.id == AUTOMOD_FORBIDDEN_CHANNEL_ID:
     lowered = message.content.lower()
-    for word in AUTOMOD_FORBIDDEN_WORDS:
+    
+     for word in AUTOMOD_FORBIDDEN_WORDS:
         if word in lowered:
             try:
-               await message.author.timeout(
-                AUTOMOD_WORD_TIMEOUT,
-                reason=f"Forbidden word: {word}"
+                await message.author.timeout(
+                    AUTOMOD_WORD_TIMEOUT,
+                    reason=f"Forbidden word: {word}"
                 )
             except discord.Forbidden:
                 pass
@@ -556,6 +557,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

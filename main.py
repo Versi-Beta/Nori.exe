@@ -430,12 +430,7 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
     )
 
 # ─── XP SYSTEM CONFIG ─────────────────────────────────────
-XP_FILE = Path("xp_data.json")
-if XP_FILE.exists():
-    with open(XP_FILE, "r") as f:
-        xp_data = json.load(f)
-else:
-    xp_data = {}
+xp_data = {}
 
 LEVEL_ROLES = {
     5: 1469012447808454919,
@@ -587,6 +582,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

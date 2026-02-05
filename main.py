@@ -28,6 +28,7 @@ AUTOMOD_FORBIDDEN_WORDS = [
     "🍑","🍆","💦","👅","🍒","stupid","loser","idiot","bitch","whore","slut","kill yourself","kys",
     "die","cunt", "girls"
 ]
+
 AUTOMOD_SPAM_LIMIT = 5
 AUTOMOD_SPAM_INTERVAL = 5
 AUTOMOD_SPAM_TIMEOUT = timedelta(hours=1)
@@ -557,6 +558,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

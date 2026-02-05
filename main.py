@@ -396,9 +396,13 @@ if message.channel.id == AUTOMOD_FORBIDDEN_CHANNEL_ID:
     for word in AUTOMOD_FORBIDDEN_WORDS:
         if word in lowered:
             try:
-                await message.author.timeout(AUTOMOD_WORD_TIMEOUT, reason=f"Forbidden word: {word}")
+                await message.author.timeout(
+                    AUTOMOD_WORD_TIMEOUT,
+                    reason=f"Forbidden word: {word}"
+                )
             except discord.Forbidden:
                 pass
+                
             log = bot.get_channel(AUTOMOD_LOG_CHANNEL_ID)
             if log:
                 embed = discord.Embed(title="❌ Auto-Moderation: Forbidden Word", color=discord.Color.red(), timestamp=datetime.utcnow())
@@ -552,6 +556,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

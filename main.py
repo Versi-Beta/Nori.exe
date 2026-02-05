@@ -42,6 +42,17 @@ LEVEL_ROLES = {
     50: 1469013481968894033
 }
 
+LEVEL_RESTRICTIONS = {
+    5: {"messages": None, "links": None},
+    10: {"messages": 1, "links": None},
+    20: {"messages": 1, "links": 1},
+    35: {"messages": None, "links": 2},
+    50: {"messages": None, "links": None}  # unlimited
+}
+
+XP_COOLDOWN = 30  # seconds
+MAX_XP_GAIN = 20  # random 10-20 XP per message
+
 # ─── INTENTS ───────────────────────────────────────────────
 intents = discord.Intents.default()
 intents.message_content = True
@@ -484,63 +495,122 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# ─── /RANK COMMAND (PUBLIC) ───────────────────────────────
+# ─── HELPER FUNCTIONS ─────────────────────────────────────
+def save_xp():
+    with open(XP_FILE, "w") as f:
+        json.dump(xp_data, f, indent=4)
+
+def get_level(total_xp):
+    level = 0
+    xp_needed = 100
+    while total_xp >= xp_needed:
+        level += 1
+        total_xp -= xp_needed
+        xp_needed = int(xp_needed * 1.3)  # medium-hard scaling
+    return level, total_xp, xp_needed
+
+# ─── MESSAGE EVENT ───────────────────────────────────────
+xp_cooldown = {}
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+    await bot.process_commands(message)  # keep commands working
+
+    user_id = str(message.author.id)
+    now = datetime.utcnow().timestamp()
+
+    # cooldown
+    last = xp_cooldown.get(user_id, 0)
+    if now - last < XP_COOLDOWN:
+        return
+    xp_cooldown[user_id] = now
+
+    # random XP gain
+    gained_xp = random.randint(10, MAX_XP_GAIN)
+    if user_id not in xp_data:
+        xp_data[user_id] = {"xp": 0, "level": 0}
+    xp_data[user_id]["xp"] += gained_xp
+
+    # calculate level
+    total_xp = xp_data[user_id]["xp"]
+    level, current_xp, xp_needed = get_level(total_xp)
+
+    # level up
+    if level > xp_data[user_id]["level"]:
+        xp_data[user_id]["level"] = level
+        save_xp()
+
+        # remove old roles and add new one
+        guild = bot.get_guild(GUILD_ID)
+        member = guild.get_member(message.author.id)
+        if member:
+            for lvl, role_id in LEVEL_ROLES.items():
+                if lvl <= level and role_id not in [r.id for r in member.roles]:
+                    await member.add_roles(guild.get_role(role_id))
+                elif lvl < level and role_id in [r.id for r in member.roles]:
+                    await member.remove_roles(guild.get_role(role_id))
+
+        # send level up embed
+        embed = discord.Embed(
+            title="✨ LEVEL UP! ✨",
+            description=f"Congrats {message.author.mention} !🥳💫 You just leveled up to Level {level}! 💖",
+            color=discord.Color.from_str("#67BED9")
+        )
+        await message.channel.send(embed=embed)
+    else:
+        save_xp()
+
+# ─── /RANK COMMAND ───────────────────────────────────────
 @bot.tree.command(
     name="rank",
-    description="Check your rank and XP",
+    description="See your current level and XP",
     guild=discord.Object(id=GUILD_ID)
 )
 async def rank(interaction: discord.Interaction):
-    user = interaction.user
+    user_id = str(interaction.user.id)
+    if user_id not in xp_data:
+        await interaction.response.send_message("You have no XP yet!", ephemeral=True)
+        return
 
-    level = user_level[user.id]
-    xp = user_xp[user.id]
-    xp_needed = 100 + (level ** 2 * 20)
-
-    ratio = xp / xp_needed
-    percent = int(ratio * 100)
-
-    filled = int(ratio * 10)
-    bar = "🟪" * filled + "⬜" * (10 - filled)
+    total_xp = xp_data[user_id]["xp"]
+    level, current_xp, xp_needed = get_level(total_xp)
+    progress = int((current_xp / xp_needed) * 10)
+    bar = "🟪" * progress + "⬜" * (10 - progress)
+    percent = int((current_xp / xp_needed) * 100)
 
     embed = discord.Embed(
-        title=f"✨ Your Rank {user.display_name}! ☄️",
-        color=discord.Color.from_str("#F6C1D1")
+        title=f"✨ Your Rank {interaction.user.name}! ☄️",
+        description=(
+            f"📊 **Level**\nLevel {level}\n\n"
+            f"⭐ **XP**\n{current_xp} / {xp_needed}\n\n"
+            f"📈 **Progress**\n{bar}\n{percent}%"
+        ),
+        color=discord.Color.from_str("#F6CEE3")
     )
-
-    embed.set_thumbnail(url=user.display_avatar.url)
-
-    embed.add_field(name="📊 Level", value=f"Level {level}", inline=False)
-    embed.add_field(name="⭐ XP", value=f"{xp} / {xp_needed}", inline=False)
-    embed.add_field(name="📈 Progress", value=f"{bar}\n**{percent}%**", inline=False)
-
+    embed.set_thumbnail(url=interaction.user.display_avatar.url)
     await interaction.response.send_message(embed=embed)
 
-# ─── /LEADERBOARD ─────────────────────────────────────────
+# ─── /LEADERBOARD COMMAND ───────────────────────────────
 @bot.tree.command(
     name="leaderboard",
-    description="Top 10 highest levels",
+    description="See the top XP users",
     guild=discord.Object(id=GUILD_ID)
 )
 async def leaderboard(interaction: discord.Interaction):
-    sorted_users = sorted(
-        user_level.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )[:10]
-
-    desc = ""
-    for i, (user_id, level) in enumerate(sorted_users, start=1):
-        user = bot.get_user(user_id)
-        if user:
-            desc += f"**#{i}** {user.mention} — Level **{level}**\n"
-
+    top = sorted(xp_data.items(), key=lambda x: x[1]["xp"], reverse=True)[:10]
+    description = ""
+    guild = bot.get_guild(GUILD_ID)
+    for i, (user_id, data) in enumerate(top, start=1):
+        member = guild.get_member(int(user_id))
+        if member:
+            description += f"**{i}. {member.name}** — Level {data['level']} ({data['xp']} XP)\n"
     embed = discord.Embed(
-        title="🏆 Leaderboard",
-        description=desc if desc else "No data yet!",
-        color=discord.Color.gold()
+        title="🏆 XP Leaderboard 🏆",
+        description=description or "No data yet.",
+        color=discord.Color.from_str("#F6CEE3")
     )
-
     await interaction.response.send_message(embed=embed)
 # ─── FLASK SERVER TO KEEP BOT ALIVE ─────────────────────
 app = Flask('')
@@ -560,6 +630,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

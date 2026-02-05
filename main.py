@@ -36,6 +36,23 @@ AUTOMOD_EXCEPT_USER = 1277708926863020122
 
 PROMO_CHANNEL_ID = 1469014593085902890
 
+LEVEL_ROLES = {
+    5: 1469012447808454919,
+    10: 1469012503714463807,
+    20: 1469012567979462803,
+    35: 1469013415090716774,
+    50: 1469013481968894033
+}
+
+LEVEL_RESTRICTIONS = {
+    5: {"messages": None, "links": None},
+    10: {"messages": 1, "links": None},
+    20: {"messages": 1, "links": 1},
+    35: {"messages": None, "links": 2},
+    50: {"messages": None, "links": None}  # unlimited
+}
+
+
 # ─── INTENTS ───────────────────────────────────────────────
 intents = discord.Intents.default()
 intents.message_content = True
@@ -45,6 +62,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 warnings = {}
 user_messages = defaultdict(list)
+
+xp_data = {}
+
+XP_PER_MESSAGE = 15
+XP_COOLDOWN = 30  # seconds
 
 # ─── MODERATOR RESTRICTION ────────────────────────────────
 def mod_only():
@@ -429,28 +451,6 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
         ephemeral=True
     )
 
-# ─── XP SYSTEM CONFIG ─────────────────────────────────────
-xp_data = {}
-
-LEVEL_ROLES = {
-    5: 1469012447808454919,
-    10: 1469012503714463807,
-    20: 1469012567979462803,
-    35: 1469013415090716774,
-    50: 1469013481968894033
-}
-
-LEVEL_RESTRICTIONS = {
-    5: {"messages": None, "links": None},
-    10: {"messages": 1, "links": None},
-    20: {"messages": 1, "links": 1},
-    35: {"messages": None, "links": 2},
-    50: {"messages": None, "links": None}  # unlimited
-}
-
-XP_COOLDOWN = 30  # seconds
-MAX_XP_GAIN = 20  # random 10-20 XP per message
-
 # ─── HELPER FUNCTIONS ─────────────────────────────────────
 def get_level(total_xp):
     level = 0
@@ -462,57 +462,32 @@ def get_level(total_xp):
     return level, total_xp, xp_needed
 
 # ─── MESSAGE EVENT ───────────────────────────────────────
-xp_cooldown = {}
-
 @bot.event
-async def on_message(message):
-    if message.author.bot:
+async def on_message(message: discord.Message):
+    if message.author.bot or not message.guild:
         return
-    await bot.process_commands(message)  # keep commands working
 
-    user_id = str(message.author.id)
-    now = datetime.utcnow().timestamp()
+    user_id = message.author.id
+    now = time.time()
 
-    # cooldown
-    last = xp_cooldown.get(user_id, 0)
-    if now - last < XP_COOLDOWN:
-        return
-    xp_cooldown[user_id] = now
-
-    # random XP gain
-    gained_xp = random.randint(10, MAX_XP_GAIN)
     if user_id not in xp_data:
-        xp_data[user_id] = {"xp": 0, "level": 0}
-    xp_data[user_id]["xp"] += gained_xp
+        xp_data[user_id] = {
+            "xp": 0,
+            "level": 0,
+            "last_message": 0
+        }
 
-    # calculate level
-    total_xp = xp_data[user_id]["xp"]
-    level, current_xp, xp_needed = get_level(total_xp)
+    if now - xp_data[user_id]["last_message"] >= XP_COOLDOWN:
+        xp_data[user_id]["last_message"] = now
+        xp_data[user_id]["xp"] += XP_PER_MESSAGE
 
-    # level up
-    if level > xp_data[user_id]["level"]:
-        xp_data[user_id]["level"] = level
-        save_xp()
+        new_level = int((xp_data[user_id]["xp"] / 100) ** 0.6)
 
-        # remove old roles and add new one
-        guild = bot.get_guild(GUILD_ID)
-        member = guild.get_member(message.author.id)
-        if member:
-            for lvl, role_id in LEVEL_ROLES.items():
-                if lvl <= level and role_id not in [r.id for r in member.roles]:
-                    await member.add_roles(guild.get_role(role_id))
-                elif lvl < level and role_id in [r.id for r in member.roles]:
-                    await member.remove_roles(guild.get_role(role_id))
-
-        # send level up embed
-        embed = discord.Embed(
-            title="✨ LEVEL UP! ✨",
-            description=f"Congrats {message.author.mention} !🥳💫 You just leveled up to Level {level}! 💖",
-            color=discord.Color.from_str("#67BED9")
-        )
-        await message.channel.send(embed=embed)
-    else:
-        save_xp()
+        if new_level > xp_data[user_id]["level"]:
+            xp_data[user_id]["level"] = new_level
+            await message.channel.send(
+                f"✨ {message.author.mention} leveled up to **Level {new_level}**!"
+            )
 
 # ─── /RANK COMMAND ───────────────────────────────────────
 @bot.tree.command(
@@ -582,6 +557,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

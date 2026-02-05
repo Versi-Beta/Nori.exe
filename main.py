@@ -16,6 +16,7 @@ LOG_CHANNEL_ID = 1457165025931432019
 RULES_CHANNEL_ID = 1276492961055637534
 MOD_CONTACT_CHANNEL_ID = 1445162538886238419
 APPEAL_LINK = "https://appeal.gg/WV3NaANC"
+AUTOMOD_FORBIDDEN_CHANNEL_ID = 1465090478797230120
 
 MOD_ROLE_IDS = [1445154830971572254, 1278403720299937853, 1462218720226054295]
 
@@ -390,6 +391,7 @@ async def on_message(message: discord.Message):
         await message.delete()
         return
 
+if message.channel.id == AUTOMOD_FORBIDDEN_CHANNEL_ID:
     lowered = message.content.lower()
     for word in AUTOMOD_FORBIDDEN_WORDS:
         if word in lowered:
@@ -550,6 +552,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

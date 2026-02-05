@@ -416,7 +416,7 @@ async def on_message(message: discord.Message):
                 embed = discord.Embed(title="❌ Auto-Moderation: Forbidden Word", color=discord.Color.red(), timestamp=datetime.utcnow())
                 embed.add_field(name="👤 User", value=f"{message.author} ({message.author.mention})", inline=False)
                 embed.add_field(name="💬 Message", value=message.content[:1024], inline=False)
-                embed.add_field(name="📌 Word used", value=word, inline=False)
+                embed.add_field(name="📌 Word used", value=found_word, inline=False)
                 embed.add_field(name="🛡️ Action", value="Timeout 1h", inline=False)
                 await log.send(embed=embed)
             try:
@@ -564,6 +564,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

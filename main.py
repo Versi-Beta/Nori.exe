@@ -457,10 +457,6 @@ XP_COOLDOWN = 30  # seconds
 MAX_XP_GAIN = 20  # random 10-20 XP per message
 
 # ─── HELPER FUNCTIONS ─────────────────────────────────────
-def save_xp():
-    with open(XP_FILE, "w") as f:
-        json.dump(xp_data, f, indent=4)
-
 def get_level(total_xp):
     level = 0
     xp_needed = 100
@@ -591,6 +587,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

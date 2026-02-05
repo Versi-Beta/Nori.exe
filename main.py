@@ -277,15 +277,96 @@ async def warn(interaction: discord.Interaction, member: discord.Member, reason:
         ephemeral=True
     )
 
+# ─── HELPER FUNCTIONS ─────────────────────────────────────
+def get_level(total_xp):
+    level = 0
+    xp_needed = 100
+    while total_xp >= xp_needed:
+        level += 1
+        total_xp -= xp_needed
+        xp_needed = int(xp_needed * 1.3)  # medium-hard scaling
+    return level, total_xp, xp_needed
+
+# ─── /RANK COMMAND ───────────────────────────────────────
+@bot.tree.command(
+    name="rank",
+    description="See your current level and XP",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def rank(interaction: discord.Interaction):
+    user_id = interaction.user.id
+    if user_id not in xp_data:
+        await interaction.response.send_message("You have no XP yet!", ephemeral=True)
+        return
+
+    total_xp = xp_data[user_id]["xp"]
+    level, current_xp, xp_needed = get_level(total_xp)
+    progress = int((current_xp / xp_needed) * 10)
+    bar = "🟪" * progress + "⬜" * (10 - progress)
+    percent = int((current_xp / xp_needed) * 100)
+
+    embed = discord.Embed(
+        title=f"✨ Your Rank {interaction.user.name}! ☄️",
+        description=(
+            f"📊 **Level**\nLevel {level}\n\n"
+            f"⭐ **XP**\n{current_xp} / {xp_needed}\n\n"
+            f"📈 **Progress**\n{bar}\n{percent}%"
+        ),
+        color=discord.Color.from_str("#F6CEE3")
+    )
+    embed.set_thumbnail(url=interaction.user.display_avatar.url)
+    await interaction.response.send_message(embed=embed)
+
+# ─── /LEADERBOARD COMMAND ───────────────────────────────
+@bot.tree.command(
+    name="leaderboard",
+    description="See the top XP users",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def leaderboard(interaction: discord.Interaction):
+    top = sorted(xp_data.items(), key=lambda x: x[1]["xp"], reverse=True)[:10]
+    description = ""
+    guild = bot.get_guild(GUILD_ID)
+    for i, (user_id, data) in enumerate(top, start=1):
+        member = guild.get_member(int(user_id))
+        if member:
+            description += f"**{i}. {member.name}** — Level {data['level']} ({data['xp']} XP)\n"
+    embed = discord.Embed(
+        title="🏆 XP Leaderboard 🏆",
+        description=description or "No data yet.",
+        color=discord.Color.from_str("#F6CEE3")
+    )
+    await interaction.response.send_message(embed=embed)
+
+
 # ─── AUTO-MODERATION ─────────────────────────────────────
 @bot.event
 async def on_message(message: discord.Message):
     if message.author.bot:
         return
-    if message.channel.id != AUTOMOD_CHANNEL_ID:
-        return
-    if message.author.id == AUTOMOD_EXCEPT_USER:
-        return
+
+    # ─── XP SYSTEM (ALL CHANNELS) ─────────────────────
+    user_id = message.author.id
+    now = time.time()
+
+    if user_id not in xp_data:
+        xp_data[user_id] = {
+            "xp": 0,
+            "level": 0,
+            "last_message": 0
+        }
+
+    if now - xp_data[user_id]["last_message"] >= XP_COOLDOWN:
+        xp_data[user_id]["last_message"] = now
+        xp_data[user_id]["xp"] += XP_PER_MESSAGE
+
+        new_level, _, _ = get_level(xp_data[user_id]["xp"])
+
+        if new_level > xp_data[user_id]["level"]:
+            xp_data[user_id]["level"] = new_level
+            await message.channel.send(
+                f"✨ {message.author.mention} leveled up to **Level {new_level}**!"
+            )
 
     now = datetime.utcnow().timestamp()
     user_messages[message.author.id].append(now)
@@ -331,7 +412,7 @@ async def on_message(message: discord.Message):
             return
 
     await bot.process_commands(message)
-
+    
 # ─── /BAN COMMAND ───────────────────────────────────────
 @bot.tree.command(
     name="ban",
@@ -451,94 +532,6 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
         ephemeral=True
     )
 
-# ─── HELPER FUNCTIONS ─────────────────────────────────────
-def get_level(total_xp):
-    level = 0
-    xp_needed = 100
-    while total_xp >= xp_needed:
-        level += 1
-        total_xp -= xp_needed
-        xp_needed = int(xp_needed * 1.3)  # medium-hard scaling
-    return level, total_xp, xp_needed
-
-# ─── MESSAGE EVENT ───────────────────────────────────────
-@bot.event
-async def on_message(message: discord.Message):
-    if message.author.bot or not message.guild:
-        return
-
-    user_id = message.author.id
-    now = time.time()
-
-    if user_id not in xp_data:
-        xp_data[user_id] = {
-            "xp": 0,
-            "level": 0,
-            "last_message": 0
-        }
-
-    if now - xp_data[user_id]["last_message"] >= XP_COOLDOWN:
-        xp_data[user_id]["last_message"] = now
-        xp_data[user_id]["xp"] += XP_PER_MESSAGE
-
-        new_level = int((xp_data[user_id]["xp"] / 100) ** 0.6)
-
-        if new_level > xp_data[user_id]["level"]:
-            xp_data[user_id]["level"] = new_level
-            await message.channel.send(
-                f"✨ {message.author.mention} leveled up to **Level {new_level}**!"
-            )
-
-# ─── /RANK COMMAND ───────────────────────────────────────
-@bot.tree.command(
-    name="rank",
-    description="See your current level and XP",
-    guild=discord.Object(id=GUILD_ID)
-)
-async def rank(interaction: discord.Interaction):
-    user_id = str(interaction.user.id)
-    if user_id not in xp_data:
-        await interaction.response.send_message("You have no XP yet!", ephemeral=True)
-        return
-
-    total_xp = xp_data[user_id]["xp"]
-    level, current_xp, xp_needed = get_level(total_xp)
-    progress = int((current_xp / xp_needed) * 10)
-    bar = "🟪" * progress + "⬜" * (10 - progress)
-    percent = int((current_xp / xp_needed) * 100)
-
-    embed = discord.Embed(
-        title=f"✨ Your Rank {interaction.user.name}! ☄️",
-        description=(
-            f"📊 **Level**\nLevel {level}\n\n"
-            f"⭐ **XP**\n{current_xp} / {xp_needed}\n\n"
-            f"📈 **Progress**\n{bar}\n{percent}%"
-        ),
-        color=discord.Color.from_str("#F6CEE3")
-    )
-    embed.set_thumbnail(url=interaction.user.display_avatar.url)
-    await interaction.response.send_message(embed=embed)
-
-# ─── /LEADERBOARD COMMAND ───────────────────────────────
-@bot.tree.command(
-    name="leaderboard",
-    description="See the top XP users",
-    guild=discord.Object(id=GUILD_ID)
-)
-async def leaderboard(interaction: discord.Interaction):
-    top = sorted(xp_data.items(), key=lambda x: x[1]["xp"], reverse=True)[:10]
-    description = ""
-    guild = bot.get_guild(GUILD_ID)
-    for i, (user_id, data) in enumerate(top, start=1):
-        member = guild.get_member(int(user_id))
-        if member:
-            description += f"**{i}. {member.name}** — Level {data['level']} ({data['xp']} XP)\n"
-    embed = discord.Embed(
-        title="🏆 XP Leaderboard 🏆",
-        description=description or "No data yet.",
-        color=discord.Color.from_str("#F6CEE3")
-    )
-    await interaction.response.send_message(embed=embed)
 # ─── FLASK SERVER TO KEEP BOT ALIVE ─────────────────────
 app = Flask('')
 
@@ -557,6 +550,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

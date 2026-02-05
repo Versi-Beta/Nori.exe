@@ -542,6 +542,96 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
+# ─────────────────────────────────────────────────────────
+
+@bot.tree.command(
+    name="rank",
+    description="See your rank and progress",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def rank(interaction: discord.Interaction):
+    user_id = interaction.user.id
+
+    level = user_level.get(user_id, 0)
+    xp = user_xp.get(user_id, 0)
+
+    # Medium-hard XP curve
+    next_level_xp = int(100 * (level ** 1.7))
+    prev_level_xp = int(100 * ((level - 1) ** 1.7)) if level > 0 else 0
+
+    progress = xp - prev_level_xp
+    total = next_level_xp - prev_level_xp
+    percent = max(0, min(progress / total, 1)) if total > 0 else 0
+
+    filled = int(percent * 10)
+    bar = "🟪" * filled + "⬜" * (10 - filled)
+
+    embed = discord.Embed(
+        title=f"✨ Your Rank {interaction.user.display_name}! ☄️",
+        color=discord.Color.from_str("#FFC0CB")  # light pink
+    )
+
+    embed.set_thumbnail(url=interaction.user.display_avatar.url)
+
+    embed.add_field(
+        name="📊 **Level**",
+        value=f"Level {level}",
+        inline=False
+    )
+    embed.add_field(
+        name="⭐ **XP**",
+        value=f"{xp} / {next_level_xp}",
+        inline=False
+    )
+    embed.add_field(
+        name="📈 **Progress**",
+        value=f"{bar}\n{int(percent * 100)}%",
+        inline=False
+    )
+
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+# ─────────────────────────────────────────────────────────
+
+@bot.tree.command(
+    name="leaderboard",
+    description="See the top members by level",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def leaderboard(interaction: discord.Interaction):
+    if not user_level:
+        await interaction.response.send_message(
+            "No data yet 👀 Start chatting to earn XP!",
+            ephemeral=True
+        )
+        return
+
+    # Sort by level first, then XP
+    top_users = sorted(
+        user_level.keys(),
+        key=lambda uid: (user_level.get(uid, 0), user_xp.get(uid, 0)),
+        reverse=True
+    )[:10]
+
+    description = ""
+    for i, user_id in enumerate(top_users, start=1):
+        user = interaction.guild.get_member(user_id)
+        if not user:
+            continue
+        description += (
+            f"**{i}. {user.display_name}** — "
+            f"Level {user_level[user_id]} "
+            f"({user_xp[user_id]} XP)\n"
+        )
+
+    embed = discord.Embed(
+        title="🏆 Server Leaderboard",
+        description=description or "No rankings yet!",
+        color=discord.Color.from_str("#C8A2C8")
+    )
+
+    await interaction.response.send_message(embed=embed)
+
 # ─── FLASK SERVER TO KEEP BOT ALIVE ─────────────────────
 app = Flask('')
 
@@ -560,6 +650,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

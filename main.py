@@ -34,25 +34,6 @@ AUTOMOD_EXCEPT_USER = 1277708926863020122
 
 PROMO_CHANNEL_ID = 1469014593085902890
 
-LEVEL_ROLES = {
-    5: 1469012447808454919,
-    10: 1469012503714463807,
-    20: 1469012567979462803,
-    35: 1469013415090716774,
-    50: 1469013481968894033
-}
-
-LEVEL_RESTRICTIONS = {
-    5: {"messages": None, "links": None},
-    10: {"messages": 1, "links": None},
-    20: {"messages": 1, "links": 1},
-    35: {"messages": None, "links": 2},
-    50: {"messages": None, "links": None}  # unlimited
-}
-
-XP_COOLDOWN = 30  # seconds
-MAX_XP_GAIN = 20  # random 10-20 XP per message
-
 # ─── INTENTS ───────────────────────────────────────────────
 intents = discord.Intents.default()
 intents.message_content = True
@@ -446,54 +427,32 @@ async def kick(interaction: discord.Interaction, member: discord.Member, reason:
         ephemeral=True
     )
 
-# ─────────────────────────────────────────────────────────
-# LEVEL + PROMO SYSTEM (ADD-ON)
-# ─────────────────────────────────────────────────────────
+# ─── XP SYSTEM CONFIG ─────────────────────────────────────
+XP_FILE = Path("xp_data.json")
+if XP_FILE.exists():
+    with open(XP_FILE, "r") as f:
+        xp_data = json.load(f)
+else:
+    xp_data = {}
 
-XP_PER_MESSAGE = (10, 20)     # medium-hard
-XP_COOLDOWN = 60              # seconds
+LEVEL_ROLES = {
+    5: 1469012447808454919,
+    10: 1469012503714463807,
+    20: 1469012567979462803,
+    35: 1469013415090716774,
+    50: 1469013481968894033
+}
 
-user_xp = defaultdict(int)
-user_level = defaultdict(int)
-last_xp_time = defaultdict(int)
+LEVEL_RESTRICTIONS = {
+    5: {"messages": None, "links": None},
+    10: {"messages": 1, "links": None},
+    20: {"messages": 1, "links": 1},
+    35: {"messages": None, "links": 2},
+    50: {"messages": None, "links": None}  # unlimited
+}
 
-promo_usage = defaultdict(lambda: {
-    "date": date.today(),
-    "messages": 0,
-    "links": 0
-})
-
-now = time.time()
-
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    # 30s cooldown
-    if now - xp_cooldown[message.author.id] >= 30:
-        gained_xp = random.randint(15, 25)
-        user_xp[message.author.id] += gained_xp
-        xp_cooldown[message.author.id] = now
-
-        level = user_level[message.author.id]
-        xp_needed = 100 + (level ** 2 * 20)
-
-        if user_xp[message.author.id] >= xp_needed:
-            user_xp[message.author.id] -= xp_needed
-            user_level[message.author.id] += 1
-
-            embed = discord.Embed(
-                title="✨ LEVEL UP! ✨",
-                description=(
-                    f"Congrats {message.author.mention}! 🥳💫\n"
-                    f"You just reached **Level {user_level[message.author.id]}** 💖"
-                ),
-                color=discord.Color.from_str("#67bed9")
-            )
-            await message.channel.send(embed=embed)
-
-    await bot.process_commands(message)
+XP_COOLDOWN = 30  # seconds
+MAX_XP_GAIN = 20  # random 10-20 XP per message
 
 # ─── HELPER FUNCTIONS ─────────────────────────────────────
 def save_xp():
@@ -630,6 +589,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

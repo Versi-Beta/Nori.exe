@@ -396,10 +396,10 @@ if message.channel.id == AUTOMOD_FORBIDDEN_CHANNEL_ID:
     for word in AUTOMOD_FORBIDDEN_WORDS:
         if word in lowered:
             try:
-                await message.author.timeout(
-                    AUTOMOD_WORD_TIMEOUT,
-                    reason=f"Forbidden word: {word}"
-                )
+               await message.author.timeout(
+    timedelta(seconds=AUTOMOD_WORD_TIMEOUT),
+    reason=f"Forbidden word: {word}"
+)
             except discord.Forbidden:
                 pass
                 
@@ -556,6 +556,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

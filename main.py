@@ -459,8 +459,6 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    now = time.time()
-
     # 30s cooldown
     if now - xp_cooldown[message.author.id] >= 30:
         gained_xp = random.randint(15, 25)
@@ -562,6 +560,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

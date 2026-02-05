@@ -452,12 +452,30 @@ promo_usage = defaultdict(lambda: {
     "links": 0
 })
 
-async def level_up(member: discord.Member, level: int):
-    embed = discord.Embed(
-        title="✨ LEVEL UP! ✨",
-        description=f"Congrats {member.mention}! 🥳💫\nYou just leveled up to **Level {level}**! 💖",
-        color=discord.Color.from_str("#67bed9")
-    )
+now = time.time()
+
+# cooldown = 30 seconds per message (anti spam but still active)
+if now - xp_cooldown[message.author.id] >= 30:
+    gained_xp = random.randint(15, 25)
+    user_xp[message.author.id] += gained_xp
+    xp_cooldown[message.author.id] = now
+
+    current_level = user_level[message.author.id]
+    xp_needed = 100 + (current_level ** 2 * 20)
+
+    if user_xp[message.author.id] >= xp_needed:
+        user_xp[message.author.id] -= xp_needed
+        user_level[message.author.id] += 1
+
+        level_up_embed = discord.Embed(
+            title="✨ LEVEL UP! ✨",
+            description=(
+                f"Congrats {message.author.mention}! 🥳💫\n"
+                f"You just leveled up to **Level {user_level[message.author.id]}** 💖"
+            ),
+            color=discord.Color.from_str("#67bed9")
+        )
+        await message.channel.send(embed=level_up_embed)
     try:
         await member.send(embed=embed)
     except discord.Forbidden:
@@ -468,11 +486,6 @@ async def update_level_roles(member: discord.Member, new_level: int):
         role = member.guild.get_role(role_id)
         if role and role in member.roles and lvl > new_level:
             await member.remove_roles(role)
-
-    if new_level in LEVEL_ROLES:
-        role = member.guild.get_role(LEVEL_ROLES[new_level])
-        if role:
-            await member.add_roles(role)
 
 def get_promo_limits(level: int):
     if level >= 50:
@@ -492,23 +505,6 @@ async def on_message(message: discord.Message):
 
     now = datetime.utcnow().timestamp()
     user_id = message.author.id
-
-    # ── XP SYSTEM ──
-    if now - last_xp_time[user_id] >= XP_COOLDOWN:
-        gained = random.randint(*XP_PER_MESSAGE)
-        user_xp[user_id] += gained
-        last_xp_time[user_id] = now
-
-        required = 100 + (user_level[user_id] ** 2 * 20)
-
-        if user_xp[user_id] >= required:
-            user_xp[user_id] = 0
-            user_level[user_id] += 1
-
-            await update_level_roles(message.author, user_level[user_id])
-
-            if user_level[user_id] >= 10:
-                await level_up(message.author, user_level[user_id])
 
     # ── PROMO RESTRICTIONS ──
     if message.channel.id == PROMO_CHANNEL_ID:
@@ -650,6 +646,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

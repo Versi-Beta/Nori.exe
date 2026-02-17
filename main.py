@@ -395,8 +395,6 @@ async def shutupnori(interaction: discord.Interaction):
     await interaction.response.send_message("**SHUT UP NORI!!!** 😭")
 
 # ─── /EMBED COMMAND (MOD ONLY) ───────────────────────
-from discord import app_commands
-from datetime import datetime
 
 @bot.tree.command(
     name="embed",
@@ -405,46 +403,44 @@ from datetime import datetime
 )
 @app_commands.describe(
     title="Title of the embed",
-    description="Main text of the embed",
-    color="Hex color (example: #FF0000)"
+    description="Main text",
+    color="Hex color like #FF0000"
 )
-async def embed(
-    interaction: discord.Interaction,
-    title: str,
-    description: str,
-    color: str
-):
+async def embed(interaction: discord.Interaction, title: str, description: str, color: str):
 
-    # Permission check
+    # Permission check FIRST
     if not interaction.user.guild_permissions.manage_messages:
         await interaction.response.send_message(
-            "❌ You don't have permission to use this.",
+            "❌ You don't have permission.",
             ephemeral=True
         )
         return
 
-    # Validate hex color
+    # Defer immediately (this prevents public response)
+    await interaction.response.defer(ephemeral=True)
+
+    # Convert hex color
     try:
-        embed_color = discord.Color.from_str(color)
+        if color.startswith("#"):
+            color = color[1:]
+        embed_color = discord.Color(int(color, 16))
     except ValueError:
-        await interaction.response.send_message(
-            "❌ Invalid color. Use hex format like #FF0000.",
+        await interaction.followup.send(
+            "❌ Invalid color. Use hex like #FF0000.",
             ephemeral=True
         )
         return
 
     embed = discord.Embed(
-    title=title,
-    description=description,
-    color=embed_color,
-    timestamp=datetime.utcnow()
-)
+        title=title,
+        description=description,
+        color=embed_color,
+        timestamp=datetime.utcnow()
+    )
 
-await interaction.response.defer(ephemeral=True)
+    await interaction.channel.send(embed=embed)
 
-await interaction.channel.send(embed=embed)
-
-await interaction.followup.send("✅ Embed sent.", ephemeral=True)
+    await interaction.followup.send("✅ Embed sent.", ephemeral=True)
 
 # ─── AUTO-MODERATION ─────────────────────────────────────
 @bot.event
@@ -669,6 +665,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

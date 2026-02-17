@@ -349,10 +349,9 @@ async def leaderboard(interaction: discord.Interaction):
 @app_commands.describe(member="The member to modify", level="The level to set")
 async def setlevel(interaction: discord.Interaction, member: discord.Member, level: int):
 
-    # Permission check (Manage Roles required)
     if not interaction.user.guild_permissions.manage_roles:
         await interaction.response.send_message(
-            "❌ You don't have permission to use this command.",
+            "❌ You don't have permission.",
             ephemeral=True
         )
         return
@@ -366,7 +365,6 @@ async def setlevel(interaction: discord.Interaction, member: discord.Member, lev
 
     user_id = member.id
 
-    # Make sure user exists in xp_data
     if user_id not in xp_data:
         xp_data[user_id] = {
             "xp": 0,
@@ -374,18 +372,17 @@ async def setlevel(interaction: discord.Interaction, member: discord.Member, lev
             "last_message": 0
         }
 
-    # Convert level to total XP
-    # This depends on how your get_level() works.
-    # Assuming each level scales upward based on total XP:
+    # 🔥 THIS IS THE IMPORTANT PART
+    # Convert level to XP using your system formula
     total_xp = 0
     for i in range(level):
-        total_xp += get_xp_needed_for_level(i)  # Only if you have this function
+        total_xp += (i + 1) * 100  # <-- CHANGE if your XP scaling is different
 
-    xp_data[user_id]["level"] = level
     xp_data[user_id]["xp"] = total_xp
+    xp_data[user_id]["level"] = level
 
     await interaction.response.send_message(
-        f"✨ {member.mention} is now **Level {level}**.",
+        f"✨ {member.mention} is now Level {level}."
     )
 
 # ─── /SHUTUPNORI COMMAND ───────────────────────
@@ -668,6 +665,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

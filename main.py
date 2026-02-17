@@ -434,13 +434,17 @@ async def embed(
         return
 
     embed = discord.Embed(
-        title=title,
-        description=description,
-        color=embed_color,
-        timestamp=datetime.utcnow()
-    )
+    title=title,
+    description=description,
+    color=embed_color,
+    timestamp=datetime.utcnow()
+)
 
-    await interaction.response.send_message(embed=embed)
+await interaction.response.defer(ephemeral=True)
+
+await interaction.channel.send(embed=embed)
+
+await interaction.followup.send("✅ Embed sent.", ephemeral=True)
 
 # ─── AUTO-MODERATION ─────────────────────────────────────
 @bot.event
@@ -665,6 +669,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

@@ -340,6 +340,110 @@ async def leaderboard(interaction: discord.Interaction):
     )
     await interaction.response.send_message(embed=embed)
 
+# ─── /SETLEVEL COMMAND (MOD ONLY) ───────────────────────
+@bot.tree.command(
+    name="setlevel",
+    description="Set a user's level manually (Mods only)",
+    guild=discord.Object(id=GUILD_ID)
+)
+@app_commands.describe(member="The member to modify", level="The level to set")
+async def setlevel(interaction: discord.Interaction, member: discord.Member, level: int):
+
+    # Permission check (Manage Roles required)
+    if not interaction.user.guild_permissions.manage_roles:
+        await interaction.response.send_message(
+            "❌ You don't have permission to use this command.",
+            ephemeral=True
+        )
+        return
+
+    if level < 0:
+        await interaction.response.send_message(
+            "Level must be 0 or higher.",
+            ephemeral=True
+        )
+        return
+
+    user_id = member.id
+
+    # Make sure user exists in xp_data
+    if user_id not in xp_data:
+        xp_data[user_id] = {
+            "xp": 0,
+            "level": 0,
+            "last_message": 0
+        }
+
+    # Convert level to total XP
+    # This depends on how your get_level() works.
+    # Assuming each level scales upward based on total XP:
+    total_xp = 0
+    for i in range(level):
+        total_xp += get_xp_needed_for_level(i)  # Only if you have this function
+
+    xp_data[user_id]["level"] = level
+    xp_data[user_id]["xp"] = total_xp
+
+    await interaction.response.send_message(
+        f"✨ {member.mention} is now **Level {level}**.",
+    )
+
+# ─── /SHUTUPNORI COMMAND ───────────────────────
+@bot.tree.command(
+    name="sunori",
+    description="Tell Nori to be quiet 😭",
+    guild=discord.Object(id=GUILD_ID)
+)
+async def shutupnori(interaction: discord.Interaction):
+    await interaction.response.send_message("**SHUT UP NORI!!!** 😭")
+
+# ─── /EMBED COMMAND (MOD ONLY) ───────────────────────
+from discord import app_commands
+from datetime import datetime
+
+@bot.tree.command(
+    name="embed",
+    description="Send a custom embed (Mods only)",
+    guild=discord.Object(id=GUILD_ID)
+)
+@app_commands.describe(
+    title="Title of the embed",
+    description="Main text of the embed",
+    color="Hex color (example: #FF0000)"
+)
+async def embed(
+    interaction: discord.Interaction,
+    title: str,
+    description: str,
+    color: str
+):
+
+    # Permission check
+    if not interaction.user.guild_permissions.manage_messages:
+        await interaction.response.send_message(
+            "❌ You don't have permission to use this.",
+            ephemeral=True
+        )
+        return
+
+    # Validate hex color
+    try:
+        embed_color = discord.Color.from_str(color)
+    except ValueError:
+        await interaction.response.send_message(
+            "❌ Invalid color. Use hex format like #FF0000.",
+            ephemeral=True
+        )
+        return
+
+    embed = discord.Embed(
+        title=title,
+        description=description,
+        color=embed_color,
+        timestamp=datetime.utcnow()
+    )
+
+    await interaction.response.send_message(embed=embed)
 
 # ─── AUTO-MODERATION ─────────────────────────────────────
 @bot.event
@@ -564,6 +668,7 @@ keep_alive()
 
 # ─── START BOT ────────────────────────────────────────────
 bot.run(DISCORD_TOKEN)
+
 
 
 

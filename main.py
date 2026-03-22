@@ -65,11 +65,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 warnings = {}
 user_messages = defaultdict(list)
 
-xp_data = {}
-
-XP_PER_MESSAGE = 15
-XP_COOLDOWN = 30  # seconds
-
 # ─── MODERATOR RESTRICTION ────────────────────────────────
 def mod_only():
     async def predicate(interaction: discord.Interaction):
@@ -279,120 +274,14 @@ async def warn(interaction: discord.Interaction, member: discord.Member, reason:
         ephemeral=True
     )
 
-# ─── HELPER FUNCTIONS ─────────────────────────────────────
-def get_level(total_xp):
-    level = 0
-    xp_needed = 100
-    while total_xp >= xp_needed:
-        level += 1
-        total_xp -= xp_needed
-        xp_needed = int(xp_needed * 1.3)  # medium-hard scaling
-    return level, total_xp, xp_needed
-
-# ─── /RANK COMMAND ───────────────────────────────────────
-@bot.tree.command(
-    name="rank",
-    description="See your current level and XP",
-    guild=discord.Object(id=GUILD_ID)
-)
-async def rank(interaction: discord.Interaction):
-    user_id = interaction.user.id
-    if user_id not in xp_data:
-        await interaction.response.send_message("You have no XP yet!", ephemeral=True)
-        return
-
-    total_xp = xp_data[user_id]["xp"]
-    level, current_xp, xp_needed = get_level(total_xp)
-    progress = int((current_xp / xp_needed) * 10)
-    bar = "🟪" * progress + "⬜" * (10 - progress)
-    percent = int((current_xp / xp_needed) * 100)
-
-    embed = discord.Embed(
-        title=f"✨ Your Rank {interaction.user.name}! ☄️",
-        description=(
-            f"📊 **Level**\nLevel {level}\n\n"
-            f"⭐ **XP**\n{current_xp} / {xp_needed}\n\n"
-            f"📈 **Progress**\n{bar}\n{percent}%"
-        ),
-        color=discord.Color.from_str("#F6CEE3")
-    )
-    embed.set_thumbnail(url=interaction.user.display_avatar.url)
-    await interaction.response.send_message(embed=embed)
-
-# ─── /LEADERBOARD COMMAND ───────────────────────────────
-@bot.tree.command(
-    name="leaderboard",
-    description="See the top XP users",
-    guild=discord.Object(id=GUILD_ID)
-)
-async def leaderboard(interaction: discord.Interaction):
-    top = sorted(xp_data.items(), key=lambda x: x[1]["xp"], reverse=True)[:10]
-    description = ""
-    guild = bot.get_guild(GUILD_ID)
-    for i, (user_id, data) in enumerate(top, start=1):
-        member = guild.get_member(int(user_id))
-        if member:
-            description += f"**{i}. {member.name}** — Level {data['level']} ({data['xp']} XP)\n"
-    embed = discord.Embed(
-        title="🏆 XP Leaderboard 🏆",
-        description=description or "No data yet.",
-        color=discord.Color.from_str("#F6CEE3")
-    )
-    await interaction.response.send_message(embed=embed)
-
-# ─── /SETLEVEL COMMAND (MOD ONLY) ───────────────────────
-@bot.tree.command(
-    name="setlevel",
-    description="Set a user's level manually (Mods only)",
-    guild=discord.Object(id=GUILD_ID)
-)
-@app_commands.describe(member="The member to modify", level="The level to set")
-async def setlevel(interaction: discord.Interaction, member: discord.Member, level: int):
-
-    if not interaction.user.guild_permissions.manage_roles:
-        await interaction.response.send_message(
-            "❌ You don't have permission.",
-            ephemeral=True
-        )
-        return
-
-    if level < 0:
-        await interaction.response.send_message(
-            "Level must be 0 or higher.",
-            ephemeral=True
-        )
-        return
-
-    user_id = member.id
-
-    if user_id not in xp_data:
-        xp_data[user_id] = {
-            "xp": 0,
-            "level": 0,
-            "last_message": 0
-        }
-
-    # 🔥 THIS IS THE IMPORTANT PART
-    # Convert level to XP using your system formula
-    total_xp = 0
-    for i in range(level):
-        total_xp += (i + 1) * 100  # <-- CHANGE if your XP scaling is different
-
-    xp_data[user_id]["xp"] = total_xp
-    xp_data[user_id]["level"] = level
-
-    await interaction.response.send_message(
-        f"✨ {member.mention} is now Level {level}."
-    )
-
 # ─── /SHUTUPNORI COMMAND ───────────────────────
 @bot.tree.command(
-    name="sunori",
-    description="Tell Nori to be quiet 😭",
+    name="suarcane",
+    description="Tell Arcane to be quiet 😭",
     guild=discord.Object(id=GUILD_ID)
 )
 async def shutupnori(interaction: discord.Interaction):
-    await interaction.response.send_message("**SHUT UP NORI!!!** 😭")
+    await interaction.response.send_message("**SHUT UP ARCANE!!!** 😭")
 
 # ─── /EMBED COMMAND (MOD ONLY) ───────────────────────
 
